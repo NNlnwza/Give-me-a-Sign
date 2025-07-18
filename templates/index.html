@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ระบบตรวจจับภาษามือ</title>
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .video-container {
+            width: 100%;
+            margin: 20px 0;
+            position: relative;
+            background-color: #333;
+            border-radius: 10px;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #video_feed {
+            width: 100%;
+            border-radius: 10px;
+            display: none;
+            transform: scaleX(-1); /* กลับภาพซ้ายขวา */
+        }
+        .camera-off-text {
+            color: white;
+            font-size: 24px;
+            text-align: center;
+            display: block;
+        }
+        .text-display {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            min-height: 60px;
+            text-align: center;
+        }
+        .current-text {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .last-gesture {
+            font-size: 16px;
+            color: #666;
+        }
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .action-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-family: 'Kanit', sans-serif;
+        }
+        .clear-button {
+            background-color: #dc3545;
+            color: white;
+        }
+        .clear-button:hover {
+            background-color: #c82333;
+        }
+        .camera-button {
+            background-color: #28a745;
+            color: white;
+        }
+        .camera-button:hover {
+            background-color: #218838;
+        }
+        .camera-button.off {
+            background-color: #6c757d;
+        }
+        .add-gesture-button {
+            background-color: #007bff;
+            color: #fff;
+        }
+        .add-gesture-button:hover {
+            background-color: #0056b3;
+        }
+        .instructions {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            font-size: 14px;
+            text-align: left;
+        }
+        .instructions img {
+            max-width: 100%;
+            height: auto;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        #addGestureModal input[type="text"] {
+            width: 100%;
+            padding: 10px 14px;
+            margin-bottom: 18px;
+            border: 1.5px solid #bbb;
+            border-radius: 6px;
+            font-size: 18px;
+            font-family: 'Kanit', sans-serif;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+            outline: none;
+            transition: border 0.2s;
+            box-sizing: border-box;
+        }
+        #addGestureModal .modal-btn-row {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            width: 100%;
+            margin-top: 18px;
+            margin-bottom: 0;
+        }
+        #addGestureModal .modal-btn {
+            flex: 1 1 0;
+            min-width: 0;
+            padding: 10px 0;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            font-family: 'Kanit', sans-serif;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+            margin: 0 2px;
+            box-sizing: border-box;
+        }
+        #addGestureModal .modal-btn.start {
+            background: #28a745;
+            color: #fff;
+            font-family: 'Kanit', sans-serif;
+        }
+        #addGestureModal .modal-btn.start:hover {
+            background: #218838;
+        }
+        #addGestureModal .modal-btn.cancel {
+            background: #dc3545;
+            color: #fff;
+            font-family: 'Kanit', sans-serif;
+        }
+        #addGestureModal .modal-btn.cancel:hover {
+            background: #c82333;
+        }
+        #collectOverlay {
+            display: none;
+            position: fixed;
+            left: 0; top: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.35);
+            z-index: 3000;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            pointer-events: auto;
+        }
+        #collectOverlayContent {
+            color: white;
+            font-size: 3em;
+            font-family: 'Kanit',sans-serif;
+            text-shadow: 0 2px 8px #000;
+            background: rgba(0,0,0,0.18);
+            padding: 32px 48px;
+            border-radius: 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #stopCollectBtn {
+            display: none;
+            margin-top: 18px;
+            padding: 12px 32px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 10px;
+            background: rgba(60,60,60,0.5);
+            color: #fff;
+            font-family: 'Kanit',sans-serif;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.13);
+            transition: background 0.2s;
+        }
+        #stopCollectBtn:hover {
+            background: rgba(60,60,60,0.7);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ระบบตรวจจับภาษามือ</h1>
+        
+        <div class="video-container">
+            <video id="video_feed" autoplay playsinline></video>
+            <div class="camera-off-text" id="camera-off-text">กล้องปิดอยู่</div>
+        </div>
+
+        <div class="text-display">
+            <div class="current-text" id="current-text">รอการตรวจจับ...</div>
+            <div class="last-gesture" id="last-gesture">ท่าทางล่าสุด:</div>
+        </div>
+
+        <div class="action-buttons">
+            <button class="action-button camera-button off" id="toggleCamera" onclick="toggleCamera()">เปิดกล้อง</button>
+            <button class="action-button clear-button" onclick="clearText()">ล้างข้อความ</button>
+            <button class="action-button add-gesture-button" onclick="openAddGestureModal()">เพิ่มท่าทางใหม่</button>
+        </div>
+
+        <!-- Modal สำหรับกรอกชื่อท่าทาง -->
+        <div id="addGestureModal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3); z-index:1000; align-items:center; justify-content:center;">
+          <div style="background:white; padding:28px 24px 20px 24px; border-radius:18px; min-width:320px; max-width:90vw; margin:auto; box-shadow:0 4px 24px rgba(0,0,0,0.13); display:flex; flex-direction:column; align-items:center;">
+            <h3 style="margin-bottom:12px; font-size: 1.35em;">เพิ่มท่าทางใหม่</h3>
+            <input type="text" id="newGestureName" placeholder="ชื่อท่าทาง(ภาษาไทย)">
+            <div class="modal-btn-row">
+              <button class="modal-btn start" onclick="startCollectNewGesture()">เริ่มเก็บข้อมูล</button>
+              <button class="modal-btn cancel" onclick="closeAddGestureModal()">ยกเลิก</button>
+            </div>
+            <div id="collectProgress" style="margin-top:14px; color:#28a745;"></div>
+          </div>
+        </div>
+
+        <!-- Overlay สำหรับนับถอยหลังและสถานะการเก็บข้อมูล -->
+        <div id="collectOverlay" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.35); z-index:3000; align-items:center; justify-content:center; flex-direction:column; pointer-events:auto;">
+          <div id="collectOverlayContent"></div>
+          <button id="stopCollectBtn">จบการเก็บข้อมูล</button>
+        </div>
+
+        <div class="instructions">
+            <h2>คำแนะนำการใช้งาน:</h2>
+            <ol>
+                <li>กดปุ่ม "เปิดกล้อง" เพื่อเริ่มการตรวจจับ</li>
+                <li>แสดงท่าทางมือให้อยู่ในกรอบกล้อง</li>
+                <li>รอให้ระบบตรวจจับท่าทาง (ประมาณ 2 วินาที)</li>
+                <li>ระบบจะแสดงข้อความที่ตรวจจับได้ด้านล่าง</li>
+                <li>กดปุ่ม "ล้างข้อความ" เพื่อเริ่มใหม่</li>
+                <li>กดปุ่ม "ปิดกล้อง" เมื่อต้องการหยุดการทำงาน</li>
+                <li>ท่าทางที่รองรับ: ไม่สบาย, ฉัน, ชอบ, เสียใจ, ขอบคุณ, ขอโทษ, รัก, หิว, สวัสดี, คุณ</li>
+            </ol>
+            <img src="{{ url_for('static', filename='Info.jpg') }}" alt="วิธีใช้งานภาษามือ">
+        </div>
+    </div>
+
+    <script>
+        let isCameraOn = false;
+        let stream = null;
+        
+        async function toggleCamera() {
+            const button = document.getElementById('toggleCamera');
+            const videoFeed = document.getElementById('video_feed');
+            const cameraOffText = document.getElementById('camera-off-text');
+            
+            isCameraOn = !isCameraOn;
+            
+            if (isCameraOn) {
+                try {
+                    // ขออนุญาตใช้กล้องอย่างชัดเจน
+                    const permission = await navigator.permissions.query({ name: 'camera' });
+                    if (permission.state === 'denied') {
+                        alert('กรุณาอนุญาตให้ใช้กล้องในการตั้งค่าเบราว์เซอร์ของคุณ\n\nวิธีอนุญาตกล้อง:\n1. คลิกไอคอนกล้องหรือล็อคที่แถบที่อยู่\n2. เลือก "อนุญาต" หรือ "Allow"\n3. รีเฟรชหน้าเว็บ');
+                        isCameraOn = false;
+                        return;
+                    }
+
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: 'user',
+                            width: { ideal: 640 },
+                            height: { ideal: 480 }
+                        }
+                    });
+                    videoFeed.srcObject = stream;
+                    button.textContent = 'ปิดกล้อง';
+                    button.classList.remove('off');
+                    videoFeed.style.display = 'block';
+                    cameraOffText.style.display = 'none';
+                    
+                    // ส่งข้อมูลวิดีโอไปยังเซิร์ฟเวอร์
+                    startVideoProcessing();
+                } catch (err) {
+                    console.error('Error accessing camera:', err);
+                    alert('ไม่สามารถเข้าถึงกล้องได้\n\nวิธีแก้ไข:\n1. คลิกไอคอนกล้องหรือล็อคที่แถบที่อยู่\n2. เลือก "อนุญาต" หรือ "Allow"\n3. รีเฟรชหน้าเว็บ');
+                    isCameraOn = false;
+                }
+            } else {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    stream = null;
+                }
+                button.textContent = 'เปิดกล้อง';
+                button.classList.add('off');
+                videoFeed.style.display = 'none';
+                cameraOffText.style.display = 'block';
+                stopVideoProcessing();
+            }
+        }
+
+        function startVideoProcessing() {
+            // ส่งข้อมูลวิดีโอไปยังเซิร์ฟเวอร์ทุก 100ms
+            setInterval(() => {
+                if (isCameraOn) {
+                    const video = document.getElementById('video_feed');
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    canvas.getContext('2d').drawImage(video, 0, 0);
+                    
+                    canvas.toBlob(blob => {
+                        const formData = new FormData();
+                        formData.append('frame', blob);
+                        
+                        fetch('/process_frame', {
+                            method: 'POST',
+                            body: formData
+                        });
+                    }, 'image/jpeg', 0.8);
+                }
+            }, 100);
+        }
+
+        function stopVideoProcessing() {
+            // หยุดการส่งข้อมูลวิดีโอ
+        }
+
+        // อัพเดทข้อความทุก 500ms
+        setInterval(() => {
+            fetch('/get_text')
+                .then(response => response.json())
+                .then(data => {
+                    const currentText = document.getElementById('current-text');
+                    const lastGesture = document.getElementById('last-gesture');
+                    
+                    if (data.text) {
+                        currentText.textContent = data.text;
+                    } else {
+                        currentText.textContent = 'รอการตรวจจับ...';
+                    }
+                    
+                    if (data.last_gesture) {
+                        lastGesture.textContent = `ท่าทางล่าสุด: ${data.last_gesture}`;
+                    } else {
+                        lastGesture.textContent = 'ท่าทางล่าสุด:';
+                    }
+                });
+        }, 500);
+
+        function clearText() {
+            fetch('/clear_text')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('current-text').textContent = 'รอการตรวจจับ...';
+                        document.getElementById('last-gesture').textContent = 'ท่าทางล่าสุด:';
+                    }
+                });
+        }
+
+        let isCollecting = false;
+        let collectGestureName = '';
+        let collectCount = 0;
+        let collectMax = 100;
+        let collectInterval = null;
+
+        function openAddGestureModal() {
+            document.getElementById('addGestureModal').style.display = 'flex';
+        }
+        function closeAddGestureModal() {
+            document.getElementById('addGestureModal').style.display = 'none';
+            document.getElementById('collectProgress').innerText = '';
+            document.getElementById('newGestureName').value = '';
+        }
+        function startCollectNewGesture() {
+            const gestureName = document.getElementById('newGestureName').value.trim();
+            if (!gestureName) {
+                alert('กรุณากรอกชื่อท่าทาง');
+                return;
+            }
+            closeAddGestureModal();
+            showCollectOverlay('เตรียมตัวให้พร้อม...');
+            setTimeout(() => countdownAndCollect(gestureName), 400);
+        }
+        function showCollectOverlay(text, showStopBtn=false) {
+            const overlay = document.getElementById('collectOverlay');
+            const content = document.getElementById('collectOverlayContent');
+            content.innerHTML = text;
+            overlay.style.display = 'flex';
+            document.getElementById('stopCollectBtn').style.display = showStopBtn ? 'block' : 'none';
+        }
+        function hideCollectOverlay() {
+            document.getElementById('collectOverlay').style.display = 'none';
+            // หลัง overlay หาย ลองอัพเดท gesture list
+            fetch('/get_gestures').then(res => res.json()).then(data => {
+                if (data.gestures) updateGestureListUI(data.gestures);
+            });
+        }
+        function countdownAndCollect(gestureName) {
+            let count = 3;
+            showCollectOverlay(count);
+            const countdown = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    showCollectOverlay(count);
+                } else {
+                    clearInterval(countdown);
+                    startFrameCollection(gestureName);
+                }
+            }, 1000);
+        }
+        function startFrameCollection(gestureName) {
+            isCollecting = true;
+            collectGestureName = gestureName;
+            collectCount = 0;
+            collectMax = 100;
+            showCollectOverlay('กำลังเก็บข้อมูล... 0/' + collectMax);
+            collectFramesWithOverlay();
+        }
+        function collectFramesWithOverlay() {
+            if (!isCollecting) {
+                // ถ้าถูกหยุดก่อนครบ 100 เฟรม ให้เทรนโมเดลเลย
+                showCollectOverlay('การเก็บข้อมูลเสร็จสิ้นแล้ว!<br>กำลังเทรนโมเดล...');
+                fetch('/train_model', {method: 'POST'}).then(res => res.json()).then(data => {
+                    if (data.success) {
+                        showCollectOverlay('เทรนโมเดลเสร็จแล้ว!<br>ใช้งานท่าทางใหม่ได้เลย');
+                        if (data.gestures) updateGestureListUI(data.gestures);
+                        setTimeout(hideCollectOverlay, 2500);
+                    } else {
+                        showCollectOverlay('เกิดข้อผิดพลาดขณะเทรนโมเดล');
+                        setTimeout(hideCollectOverlay, 2500);
+                    }
+                });
+                return;
+            }
+            if (collectCount >= collectMax) {
+                showCollectOverlay('การเก็บข้อมูลเสร็จสิ้นแล้ว!<br>กำลังเทรนโมเดล...');
+                isCollecting = false;
+                fetch('/train_model', {method: 'POST'}).then(res => res.json()).then(data => {
+                    if (data.success) {
+                        showCollectOverlay('เทรนโมเดลเสร็จแล้ว!<br>ใช้งานท่าทางใหม่ได้เลย');
+                        if (data.gestures) updateGestureListUI(data.gestures);
+                        setTimeout(hideCollectOverlay, 2500);
+                    } else {
+                        showCollectOverlay('เกิดข้อผิดพลาดขณะเทรนโมเดล');
+                        setTimeout(hideCollectOverlay, 2500);
+                    }
+                });
+                return;
+            }
+            const video = document.getElementById('video_feed');
+            if (!video || video.readyState !== 4) {
+                setTimeout(collectFramesWithOverlay, 200);
+                return;
+            }
+            // ดึงภาพจากกล้อง
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            canvas.toBlob(blob => {
+                const formData = new FormData();
+                formData.append('frame', blob);
+                formData.append('gesture_name', collectGestureName);
+                fetch('/collect_frame', {method: 'POST', body: formData}).then(() => {
+                    collectCount++;
+                    showCollectOverlay('กำลังเก็บข้อมูล... ' + collectCount + '/' + collectMax, true);
+                    setTimeout(collectFramesWithOverlay, 50);
+                });
+            }, 'image/jpeg', 0.8);
+        }
+
+        function updateGestureListUI(gestures) {
+            // อัพเดทในคำแนะนำการใช้งาน (li ท่าทางที่รองรับ)
+            const ol = document.querySelector('.instructions ol');
+            if (ol && gestures && gestures.length > 0) {
+                // หาตำแหน่ง li ที่มีข้อความ 'ท่าทางที่รองรับ:'
+                let found = false;
+                ol.querySelectorAll('li').forEach(li => {
+                    if (li.textContent.trim().startsWith('ท่าทางที่รองรับ')) {
+                        li.innerHTML = 'ท่าทางที่รองรับ: ' + gestures.join(', ');
+                        found = true;
+                    }
+                });
+                if (!found) {
+                    // ถ้าไม่มี li เดิม ให้เพิ่มใหม่
+                    const li = document.createElement('li');
+                    li.innerHTML = 'ท่าทางที่รองรับ: ' + gestures.join(', ');
+                    ol.appendChild(li);
+                }
+            }
+        }
+    </script>
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            fetch('/get_gestures').then(res => res.json()).then(data => {
+                if (data.gestures) updateGestureListUI(data.gestures);
+            });
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('stopCollectBtn').onclick = function() {
+                isCollecting = false;
+            };
+        });
+    </script>
+</body>
+</html> 
